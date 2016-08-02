@@ -22,14 +22,14 @@
 ;
 ;**** **** **** **** ****
 ;
-; Favourite Littlebee 30A hardware definition file
+; Favourite Littlebee 30A硬件定义文件
 ;
 ;**** **** **** **** ****
 
 
 
 ;*********************
-; Device SiLabs F390
+; 基于SiLabs F390芯片
 ;*********************
 $include (c8051f390.inc)
 
@@ -38,14 +38,17 @@ $include (c8051f390.inc)
 ;**** **** **** **** ****
 
 ;**** **** **** **** ****
-; Constant definitions
+; 常量定义
 ;**** **** **** **** ****
+; 0x0A40保存着ESC的名字，占用16个字节
 CSEG AT 1A40h
 Eep_ESC_Layout:		DB	"#FVTLibee30A#   "	; ESC layout tag
+; 0x0A50保存着固件的名字和MCU的名字，占用16个字节
 CSEG AT 1A50h
 Eep_ESC_MCU:			DB	"#BLHELI#F390#   "	; Project and MCU tag (16 Bytes)
 
-MCU_48MHZ				EQU	1	; Set to 1 if MCU can run at 48MHz
+; 定义一些宏常量
+MCU_48MHZ				EQU	1	; 1表示运行在48MHz，否则运行在24MHz
 ONE_S_CAPABLE			EQU	0	; Set to 1 if ESC can operate at 1S
 PORT3_EXIST			EQU	0	; Set to 1 if MCU has port3
 COMP1_USED			EQU	0	; Set to 1 if MCU has comparator 1 and it is being used
@@ -61,7 +64,7 @@ TEMP_LIMIT			EQU 	114	; Temperature measurement ADC value for which main motor p
 TEMP_LIMIT_STEP		EQU	4	; Temperature measurement ADC value increment for which main motor power is further limited
 
 ;**** **** **** **** ****
-; ESC specific defaults
+; 本型号ESC的专用常量
 ;**** **** **** **** ****
 DEFAULT_PGM_MAIN_SPOOLUP_TIME		EQU 10	; Main motor spoolup time
 DEFAULT_PGM_MAIN_STARTUP_PWR 		EQU 9 	; 1=0.031 2=0.047 3=0.063 4=0.094 5=0.125 6=0.188	7=0.25  8=0.38  9=0.50  10=0.75 11=1.00 12=1.25 13=1.50
@@ -69,9 +72,9 @@ DEFAULT_PGM_TAIL_STARTUP_PWR 		EQU 9 	; 1=0.031 2=0.047 3=0.063 4=0.094 5=0.125 
 DEFAULT_PGM_MULTI_STARTUP_PWR 	EQU 9 	; 1=0.031 2=0.047 3=0.063 4=0.094 5=0.125 6=0.188	7=0.25  8=0.38  9=0.50  10=0.75 11=1.00 12=1.25 13=1.50
 
 ;**** **** **** **** ****
-; Bootloader definitions
+; 同引导程序相关的定义
 ;**** **** **** **** ****
-RTX_PORT		  		EQU 	P0		; Receive/Transmit port
+RTX_PORT		  		EQU 	P0		; 接收/发送端口
 RTX_MDOUT				EQU	P0MDOUT	; Set to 1 for PUSHPULL				
 RTX_MDIN				EQU	P0MDIN	; Set to 1 for DIGITAL				
 RTX_SKIP				EQU	P0SKIP	; Set to 1 for SKIP				
@@ -82,7 +85,7 @@ SIGNATURE_002			EQU	090h
 
 
 ;*********************
-; PORT 0 definitions *
+; PORT 0 定义        *
 ;*********************  
 ;			EQU	7	;i
 ;			EQU	6	;i
@@ -145,7 +148,7 @@ ENDM
 
 
 ;*********************
-; PORT 1 definitions *
+; PORT 1 定义        *
 ;*********************
 CnFET		EQU	7	;o	(High side PWM)
 CpFET		EQU	6	;o
@@ -235,7 +238,7 @@ ENDM
 
 
 ;*********************
-; PORT 2 definitions *
+; PORT 2 定义        *
 ;*********************
 DebugPin		EQU	4	;o
 Mux_C2		EQU	3	;i
@@ -249,8 +252,9 @@ P2_PUSHPULL	EQU	(1 SHL DebugPin)
 
 
 ;**********************
-; MCU specific macros *
+; MCU专用宏           *
 ;**********************
+; 定义中断表
 MACRO Interrupt_Table_Definition
 CSEG AT 0				; Code segment start
 	jmp reset
@@ -270,6 +274,7 @@ MACRO Initialize_Xbar
 	mov	XBR1, #41h	; Xbar enabled, CEX0 routed to pin Rcp_In			
 ENDM
 
+; 初始化ADC
 MACRO Initialize_Adc
 	mov	REF0CN, #0Eh		; Set vdd (3.3V) as reference. Enable temp sensor and bias
 IF MCU_48MHZ == 0

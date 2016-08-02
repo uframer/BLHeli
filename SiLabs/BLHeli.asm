@@ -248,31 +248,31 @@ $NOMOD51
 ;
 ;
 ;**** **** **** **** ****
-; Up to 8K Bytes of In-System Self-Programmable Flash
-; Up to 768 Bytes Internal SRAM
+; 最大8KB系统内自编程闪存
+; 最大768B内部SRAM
 ;
 ;**** **** **** **** ****
-; Master clock is internal 24MHz oscillator (or 48MHz, for which the times below are halved)
-; Timer 0 (167/500ns counts) always counts up and is used for
-; - PWM generation
-; Timer 2 (500ns counts) always counts up and is used for
-; - RC pulse timeout/skip counts and commutation times
-; Timer 3 (500ns counts) always counts up and is used for
-; - Commutation timeouts
-; PCA0 (500ns counts) always counts up and is used for
-; - RC pulse measurement
+; 主时钟是内部的24MHz晶振（或者是48MHz，如果是48，那么下面的时间需要相应除以2）
+; Timer 0 (167/500ns counts) 单调递增，用于
+; - 生成PWM信号
+; Timer 2 (500ns counts) 单调递增，用于
+; - RC脉冲的超时/跳过计数，以及统计通信计数
+; Timer 3 (500ns counts) 单调递增，用于
+; - 通信超时
+; PCA0 (500ns counts) 单调递增，用于
+; - RC脉冲测量
 ;
 ;**** **** **** **** ****
-; Interrupt handling
-; The C8051 does not disable interrupts when entering an interrupt routine.
-; Also some interrupt flags need to be cleared by software
-; The code disables interrupts in interrupt routines, in order to avoid too nested interrupts
-; - Interrupts are disabled during beeps, to avoid audible interference from interrupts
-; - RC pulse interrupts are periodically disabled in order to reduce interference with pwm interrupts.
+; 中断处理
+; C8051不会在进入中断例程时禁用中断。
+; 而且有些中断flag还需要软件来清除。
+; 代码会在中断例程里禁用中断，以免执行嵌套层次太深的中断：
+; - 在发出beep声时会禁用中断，避免中断影响到发出的声音
+; - RC脉冲中断会被周期性地禁用，减少对PWM中断的干扰
 ;
 ;**** **** **** **** ****
-; Motor control:
-; - Brushless motor control with 6 states for each electrical 360 degrees
+; 电机控制：
+; - 无刷电机控制使用6个状态 for each electrical 360 degrees
 ; - An advance timing of 0deg has zero cross 30deg after one commutation and 30deg before the next
 ; - Timing advance in this implementation is set to 15deg nominally
 ; - "Damped" commutation schemes are available, where more than one pfet is on when pwm is off. This will absorb energy from bemf and make step settling more damped.
@@ -282,11 +282,11 @@ $NOMOD51
 ; - Timer wait: Wt_Zc_Scan		7.5deg	; Time to wait before looking for zero cross
 ; - Scan for zero cross			22.5deg	, Nominal, with some motor variations
 ;
-; Motor startup:
-; There is a startup phase and an initial run phase, before normal bemf commutation run begins.
+; 电机启动：
+; 在正常bemf通信开始之前，有一个启动阶段和一个初始运行阶段。
 ;
 ;**** **** **** **** ****
-; List of enumerated supported ESCs and modes  (main, tail or multi)
+; 通过宏定义列出所有支持的ESC类型+模式（例如，main表示直升机主旋翼，tail表示直升机的尾翼，multi表示多轴飞行器）的组合。
 XP_3A_Main 					EQU 1
 XP_3A_Tail 					EQU 2
 XP_3A_Multi 					EQU 3
@@ -558,7 +558,7 @@ Servoking_Monster_30A_Multi 		EQU 267
 
 
 ;**** **** **** **** ****
-; Select the ESC and mode to use (or unselect all for use with external batch compile file)
+; 选择针对的ESC+模式（如果用外部批处理编译文件，例如MakeHexfile.bat，那么这里一个都不要选）
 ;BESCNO EQU XP_3A_Main 
 ;BESCNO EQU XP_3A_Tail
 ;BESCNO EQU XP_3A_Multi
@@ -4061,7 +4061,7 @@ beep_anfet_off:
 	jnb	ACC.0, beep_cnfet_off
 	CnFET_off			; CnFET off
 beep_cnfet_off:
-	mov	A, #150		; 25�s off
+	mov	A, #150		; 25�s off
 	djnz	ACC, $		
 	djnz	Temp2, beep_onoff
 	; Copy variable
@@ -7051,17 +7051,18 @@ average_throttle_div:
 ;**** **** **** **** **** **** **** **** **** **** **** **** ****
 ;**** **** **** **** **** **** **** **** **** **** **** **** ****
 ;
-; Main program start
+; 主程序入口
 ;
 ;**** **** **** **** **** **** **** **** **** **** **** **** ****
 ;**** **** **** **** **** **** **** **** **** **** **** **** ****
 ;**** **** **** **** **** **** **** **** **** **** **** **** ****
 pgm_start:
-	; Check flash lock byte
+	; 检查闪存时钟的配置字节
 	mov	A, RSTSRC			
-	jb	ACC.6, ($+6)		; Check if flash access error was reset source 
+	jb	ACC.6, ($+6)		; 检查造成reset的是否是闪存访问错误，如果是，则跳转
+	                        ; 这里是判断ACC寄存器的6 bit是否是1
 
-	mov	Bit_Access, #0		; No - then this is the first try
+	mov	Bit_Access, #0		; 不是，那么这是第一次运行
 
 	inc	Bit_Access
 	mov	DPTR, #LOCK_BYTE_ADDRESS_16K	; First try is for 16k flash size
@@ -7085,25 +7086,25 @@ ELSE
 ENDIF
 
 lock_byte_ok:
-	; Disable the WDT.
+	; 禁用Watch Dog Timer
 IF SIGNATURE_001 == 0f3h		
-	anl	PCA0MD, #NOT(40h)	; Clear watchdog enable bit
+	anl	PCA0MD, #NOT(40h)	; 清除watchdog的使能位
 ENDIF
 IF SIGNATURE_001 == 0f8h		
-	mov	WDTCN, #0DEh		; Disable watchdog
+	mov	WDTCN, #0DEh		; 禁用watchdog
 	mov	WDTCN, #0ADh		
 ENDIF
-	; Initialize stack
-	mov	SP, #0c0h			; Stack = 64 upper bytes of RAM
-	; Initialize VDD monitor
-	orl	VDM0CN, #080h    	; Enable the VDD monitor
-	call	wait1ms			; Wait at least 100us
+	; 初始化堆栈
+	mov	SP, #0c0h			; 堆栈使用RAM中最高的64个字节
+	; 初始化VDD monitor
+	orl	VDM0CN, #080h    	; 启用VDD monitor
+	call	wait1ms			; 等待至少100us
 IF ONE_S_CAPABLE == 0		
-	mov 	RSTSRC, #02h   	; Set VDD monitor as a reset source (PORSF) if not 1S capable                                
+	mov 	RSTSRC, #02h   	; 如果不支持1S，那么将VDD monitor添加为一个reset源（PORSF）                                
 ELSE
 	mov 	RSTSRC, #00h   	; Do not set VDD monitor as a reset source for 1S ESCSs, in order to avoid resets due to it                              
 ENDIF
-	; Set clock frequency
+	; 设置时钟频率
 IF SIGNATURE_001 == 0f3h		
 	orl	OSCICN, #03h		; Set clock divider to 1 (not supported on 'f850)
 ENDIF
@@ -7152,30 +7153,31 @@ IF PORT3_EXIST == 1
 	mov	P3MDOUT, #P3_PUSHPULL				
 	mov	P3MDIN, #P3_DIGITAL				
 ENDIF
-	; Initialize the XBAR and related functionality
+	; 初始化XBAR及相关功能
 	Initialize_Xbar
 	; Switch power off again, after initializing ports
 	call	switch_power_off
-	; Clear RAM
-	clr	A				; Clear accumulator
-	mov	Temp1, A			; Clear Temp1
+	; 清除RAM
+	clr	A				; 清除累加器
+	mov	Temp1, A			; 清除Temp1
 clear_ram:	
-	mov	@Temp1, A			; Clear RAM
+	mov	@Temp1, A			; 清除RAM
 	djnz Temp1, clear_ram	; Is A not zero? - jump
-	; Initialize LFSR
+	; 初始化LFSR
 	mov	Random, #1
 	; Set default programmed parameters
 	call	set_default_parameters
 	; Read all programmed parameters
 	call read_all_eeprom_parameters
-	; Set beep strength
+	; 设置beep强度
 	mov	Temp1, #Pgm_Beep_Strength
 	mov	Beep_Strength, @Temp1
-	; Set initial arm variable
+	; 设置初始化arm变量
 	mov	Initial_Arm, #1
-	; Initializing beep
-	clr	EA				; Disable interrupts explicitly
+	; 初始化beep
+	clr	EA				; 禁用中断
 	call wait200ms	
+	; 发声，一次发出三个声调
 	call beep_f1
 	call wait30ms
 	call beep_f2
@@ -7192,13 +7194,13 @@ ENDIF
 
 ;**** **** **** **** **** **** **** **** **** **** **** **** ****
 ;
-; No signal entry point
+; 无信号输入时的入口点
 ;
 ;**** **** **** **** **** **** **** **** **** **** **** **** ****
 init_no_signal:
 	; Disable interrupts explicitly
 	clr	EA				
-	; Check if input signal is high for more than 15ms
+	; 检查输入信号是否保持在high 15ms以上
 	mov	Temp1, #250
 input_high_check_1:
 	mov	Temp2, #250
@@ -7223,7 +7225,7 @@ bootloader_done:
 	mov	Beep_Strength, @Temp1
 	; Switch power off
 	call	switch_power_off
-	; Set clock frequency
+	; 设置时钟频率
 IF MCU_48MHZ == 1
 	Set_MCU_Clk_24MHz
 ENDIF
@@ -7248,22 +7250,22 @@ IF COMP1_USED == 1
 	mov	CPT1CN, #80h		; Comparator enabled, no hysteresis
 	mov	CPT1MD, #00h		; Comparator response time 100ns
 ENDIF
-	; Initialize ADC
+	; 初始化ADC
 	Initialize_Adc			; Initialize ADC operation
 	call	wait1ms
 	setb	EA				; Enable all interrupts
-	; Measure number of lipo cells
+	; 测量LIPO是几S的
 	call Measure_Lipo_Cells			; Measure number of lipo cells
 	; Reset stall count
 	mov	Stall_Cnt, #0
-	; Initialize RC pulse
+	; 初始化RC脉冲
 	Rcp_Int_First 					; Enable interrupt and set to first edge
 	Rcp_Int_Enable		 			; Enable interrupt
 	Rcp_Clear_Int_Flag 				; Clear interrupt flag
 	clr	Flags2.RCP_EDGE_NO			; Set first edge flag
 	call wait200ms
 
-	; Measure PWM frequency
+	; 测量PWM频率
 measure_pwm_freq_init:	
 	setb	Flags0.RCP_MEAS_PWM_FREQ 		; Set measure pwm frequency flag
 	mov	Temp4, #3						; Number of attempts before going back to detect input signal
@@ -8043,6 +8045,7 @@ $include (BLHeliBootLoad.inc)			; Include source code for bootloader
 
 
 CSEG AT 19FDh
+; 0x19FD是整个代码的入口，直接跳转到pgm_start
 reset:
 ljmp	pgm_start
 
